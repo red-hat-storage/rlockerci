@@ -1,7 +1,7 @@
 from framework import constants, settings
 from framework.component import Component
 from framework.pipeline_utils import Dir, ProcessTemplateFile, ProcessRegularFile
-from framework.utils import DjangoPod
+from framework.utils import DjangoPod, exec_cmd
 from framework.helm import HelmChartUpgradeRun, HelmChartInstallRun
 import subprocess
 import os
@@ -92,8 +92,10 @@ class QueueService(Component):
         And this URL needs to be given as env variable to the queue service as RESOURCE_LOCKER_URL
         :return:
         """
-        get_route_cmd = f"oc get route -n {settings.get('NAMESPACE')} resourcelocker -o=jsonpath={{@.spec.host}}".split()
-        route = route or subprocess.check_output(get_route_cmd).decode("utf-8").replace(
+        get_route_cmd = (
+            f"oc get route -n {settings.get('NAMESPACE')} resourcelocker -o=jsonpath={{@.spec.host}}"
+        )
+        route = route or exec_cmd(get_route_cmd)[1].replace(
             "'", ""
         )
         # TODO Make a default value for the token parameter too ?
@@ -135,7 +137,8 @@ def main():
     print("DEPLOYMENT OF RESOURCE LOCKER DONE SUCCESSFULLY! ✔️")
 
     print(f"PRINTING OUTPUT OF: {cmd_finalization_cmd}")
-    os.system(cmd_finalization_cmd)
+    exec_cmd(cmd_finalization_cmd)
+
 
 if __name__ == "__main__":
     main()

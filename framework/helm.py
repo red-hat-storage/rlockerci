@@ -1,6 +1,7 @@
 import os
 from framework import constants, settings
 from framework.pipeline_utils import Dir, ProcessTemplateFile
+from framework.utils import exec_cmd
 
 # TODO: THOSE CLASSES COULD BE SINGLETON, CONSIDER CONVERTING THEM
 class HelmBase:
@@ -26,7 +27,7 @@ class HelmBase:
     @classmethod
     def __deploy(cls):
         with Dir(constants.RLOCKER_CHART_DIR):
-            os.system(
+            exec_cmd(
                 f"helm {cls.ACTION} {settings.get('RELEASE_NAME')} --namespace={settings.get('NAMESPACE')} ."
             )
 
