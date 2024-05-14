@@ -103,7 +103,7 @@ class QueueService(Component):
             tpl_file.process(
                 {
                     "RESOURCE_LOCKER_TOKEN": token,
-                    "RESOURCE_LOCKER_URL": f"http://{route}",
+                    "RESOURCE_LOCKER_URL": f"https://{route}",
                 }
             )
 

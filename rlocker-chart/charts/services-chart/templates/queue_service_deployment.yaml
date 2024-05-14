@@ -25,6 +25,9 @@ spec:
             successThreshold: 1
             failureThreshold: 6
           imagePullPolicy: Always
+          env:
+            - name: REQUESTS_CA_BUNDLE
+              value: "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem"
           envFrom:
             - configMapRef:
                 name: queue-service-config
@@ -32,4 +35,15 @@ spec:
           args:
             - '-sk'
             - queue_service
+          volumeMounts:
+            - name: trusted-ca
+              mountPath: /etc/pki/ca-trust/extracted/pem
+              readOnly: true
+      volumes:
+        - name: trusted-ca
+          configMap:
+            name: redhat-ca-bundle
+            items:
+              - key: ca-bundle.crt
+                path: tls-ca-bundle.pem
       restartPolicy: Always
