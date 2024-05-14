@@ -3,8 +3,6 @@ from framework.component import Component
 from framework.pipeline_utils import Dir, ProcessTemplateFile, ProcessRegularFile
 from framework.utils import DjangoPod, exec_cmd
 from framework.helm import HelmChartUpgradeRun, HelmChartInstallRun
-import subprocess
-import os
 import logging
 
 logger = logging.getLogger(__name__)
@@ -34,9 +32,9 @@ class Database(Component):
 
             create_ns = f"oc create ns {settings.get('NAMESPACE')} --dry-run=client -o yaml | oc apply -f -"
             process_template = f"oc process postgresql-persistent -n openshift --param-file={constants.ENV_DB_FILE} | oc create -f - -n {settings.get('NAMESPACE')}"
+            exec_cmd(create_ns)
+            exec_cmd(process_template)
 
-            os.system(create_ns)
-            os.system(process_template)
 
 class Web(Component):
     WAIT_TIME = 120
@@ -59,6 +57,7 @@ class Web(Component):
     def post_deployment(self):
         self.django_pod.migrate_db()
         self.django_pod.create_or_get_super_user()
+
 
 class QueueService(Component):
     WAIT_TIME = 120
@@ -108,6 +107,7 @@ class QueueService(Component):
                 }
             )
 
+
 def main():
     if not Database.is_pod_exists():
         db = Database()
@@ -129,8 +129,8 @@ def main():
     qs = QueueService(web_instance=web)
     qs.template_services_env(token=web.django_pod.get_superuser_token())
     HelmChartUpgradeRun()
-    #TODO: This line has to stay commented out, fix the methodology of verifying pod existance here!
-    #QueueService.is_pod_exists(wait=QueueService.WAIT_TIME)
+    # TODO: This line has to stay commented out, fix the methodology of verifying pod existence here!
+    # QueueService.is_pod_exists(wait=QueueService.WAIT_TIME)
 
     # Finishing Touches:
     cmd_finalization_cmd = f"oc get all -n {settings.get('NAMESPACE')}"
