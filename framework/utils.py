@@ -1,6 +1,7 @@
 import subprocess
 from framework import constants, settings
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -42,8 +43,7 @@ class DjangoPod:
     def get_first_pod_from_deployment(self):
         django_pod_name_command = f"oc get pods -n {settings.get('NAMESPACE')} -l {constants.LABEL_STR_DJANGO} -o=jsonpath={{@.items[0].metadata.name}}"
         pod_name = (
-            subprocess.check_output(django_pod_name_command, shell=True)
-            .decode("utf-8")
+            exec_cmd(django_pod_name_command)[1]
             .rstrip()
         )
         return pod_name
@@ -51,7 +51,7 @@ class DjangoPod:
     def migrate_db(self):
         migrate_db_cmd = f"oc exec -n {settings.get('NAMESPACE')} {self.name} -- python manage.py migrate"
         run_migrate_db = (
-            subprocess.check_output(migrate_db_cmd, shell=True).decode("utf-8").rstrip()
+            exec_cmd(migrate_db_cmd)[1].rstrip()[1]
         )
 
         # TODO: REPLACE TO LOGGER:
@@ -63,8 +63,7 @@ class DjangoPod:
         try:
             superuser_cmd = f"oc exec -n {settings.get('NAMESPACE')} {self.name} -- python manage.py createsuperuser --noinput"
             run_create_super_user = (
-                subprocess.check_output(superuser_cmd, shell=True)
-                .decode("utf-8")
+                exec_cmd(superuser_cmd)[1]
                 .rstrip()
             )
 
@@ -72,7 +71,7 @@ class DjangoPod:
             print(run_create_super_user)
 
             return None
-        except:
+        except Exception:
             logger.warning(
                 msg="Skipping superuser creation, user might be already existing!"
             )
@@ -84,9 +83,31 @@ class DjangoPod:
     def get_superuser_token(self):
         get_user_token_cmd = f"oc exec -n {settings.get('NAMESPACE')} {self.name} -- python manage.py retrieve_token -u {self.__django_superuser}"
         run_get_user_token = (
-            subprocess.check_output(get_user_token_cmd, shell=True)
-            .decode("utf-8")
+            exec_cmd(get_user_token_cmd)[1]
             .rstrip()
         )
 
         return run_get_user_token
+
+
+def exec_cmd(cmd, **kwargs):
+    """
+    Run command
+    """
+    print(f"Executing command: '{cmd}'")
+    result = subprocess.run(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        stdin=subprocess.PIPE,
+        shell=True,
+        **kwargs,
+    )
+    stdout = result.stdout.decode("utf-8")
+    stderr = result.stderr.decode("utf-8")
+    rc = result.returncode
+    print(f"rc: {rc}")
+    print(f"stdout: '{stdout}'")
+    print(f"stderr: '{stderr}'")
+    print()
+    return rc, stdout, stderr

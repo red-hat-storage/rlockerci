@@ -1,10 +1,8 @@
 from framework import constants, settings
 from framework.component import Component
 from framework.pipeline_utils import Dir, ProcessTemplateFile, ProcessRegularFile
-from framework.utils import DjangoPod
+from framework.utils import DjangoPod, exec_cmd
 from framework.helm import HelmChartUpgradeRun, HelmChartInstallRun
-import subprocess
-import os
 import logging
 
 logger = logging.getLogger(__name__)
@@ -34,9 +32,9 @@ class Database(Component):
 
             create_ns = f"oc create ns {settings.get('NAMESPACE')} --dry-run=client -o yaml | oc apply -f -"
             process_template = f"oc process postgresql-persistent -n openshift --param-file={constants.ENV_DB_FILE} | oc create -f - -n {settings.get('NAMESPACE')}"
+            exec_cmd(create_ns)
+            exec_cmd(process_template)
 
-            os.system(create_ns)
-            os.system(process_template)
 
 class Web(Component):
     WAIT_TIME = 120
@@ -59,6 +57,7 @@ class Web(Component):
     def post_deployment(self):
         self.django_pod.migrate_db()
         self.django_pod.create_or_get_super_user()
+
 
 class QueueService(Component):
     WAIT_TIME = 120
@@ -92,8 +91,10 @@ class QueueService(Component):
         And this URL needs to be given as env variable to the queue service as RESOURCE_LOCKER_URL
         :return:
         """
-        get_route_cmd = f"oc get route -n {settings.get('NAMESPACE')} resourcelocker -o=jsonpath={{@.spec.host}}".split()
-        route = route or subprocess.check_output(get_route_cmd).decode("utf-8").replace(
+        get_route_cmd = (
+            f"oc get route -n {settings.get('NAMESPACE')} resourcelocker -o=jsonpath={{@.spec.host}}"
+        )
+        route = route or exec_cmd(get_route_cmd)[1].replace(
             "'", ""
         )
         # TODO Make a default value for the token parameter too ?
@@ -105,6 +106,7 @@ class QueueService(Component):
                     "RESOURCE_LOCKER_URL": f"http://{route}",
                 }
             )
+
 
 def main():
     if not Database.is_pod_exists():
@@ -127,15 +129,16 @@ def main():
     qs = QueueService(web_instance=web)
     qs.template_services_env(token=web.django_pod.get_superuser_token())
     HelmChartUpgradeRun()
-    #TODO: This line has to stay commented out, fix the methodology of verifying pod existance here!
-    #QueueService.is_pod_exists(wait=QueueService.WAIT_TIME)
+    # TODO: This line has to stay commented out, fix the methodology of verifying pod existence here!
+    # QueueService.is_pod_exists(wait=QueueService.WAIT_TIME)
 
     # Finishing Touches:
     cmd_finalization_cmd = f"oc get all -n {settings.get('NAMESPACE')}"
     print("DEPLOYMENT OF RESOURCE LOCKER DONE SUCCESSFULLY! ✔️")
 
     print(f"PRINTING OUTPUT OF: {cmd_finalization_cmd}")
-    os.system(cmd_finalization_cmd)
+    exec_cmd(cmd_finalization_cmd)
+
 
 if __name__ == "__main__":
     main()

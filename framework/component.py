@@ -1,6 +1,6 @@
 from framework import constants, settings
 from abc import abstractmethod
-from framework.utils import OcOutput
+from framework.utils import OcOutput, exec_cmd
 import time
 import logging
 import subprocess
@@ -62,8 +62,7 @@ class Component:
             3) Write the condition to check and return True/False accordingly
         """
         result = (
-            subprocess.check_output(cls.POD_CONDITION_CMD, shell=True)
-            .decode("utf-8")
+            exec_cmd(cls.POD_CONDITION_CMD)[1]
             .split()
         )
         result = OcOutput(result).as_dict()
