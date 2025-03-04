@@ -42,8 +42,8 @@ spec:
       volumes:
         - name: trusted-ca
           configMap:
-            name: redhat-ca-bundle
+            name: kube-root-ca.crt
             items:
-              - key: ca-bundle.crt
+              - key: ca.crt
                 path: tls-ca-bundle.pem
       restartPolicy: Always
